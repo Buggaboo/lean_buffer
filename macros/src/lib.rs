@@ -220,11 +220,20 @@ impl FieldReceiver {
     }
 
     fn allowed_types(joined: &str) -> bool {
-        ((joined.starts_with("Vecu") || joined.starts_with("Veci")) &&
-            ["8", "16", "32", "64"].iter().any(|d| joined.ends_with(d)))
-            || joined.starts_with("Vecf32") || joined.starts_with("Vecf64")
-            || joined.eq("Vecbool")
-            || joined.eq("Vecchar")
+        match joined.len() {
+            5 => {
+                matches!(joined, "Vecu8" | "Veci8")
+            }
+            6 => {
+                (joined.starts_with("Vecu") || joined.starts_with("Veci")) &&
+                ["16", "32", "64"].iter().any(|d| joined.ends_with(d))
+                || matches!(joined, "Vecf32" | "Vecf64")
+            },
+            7 => {
+                matches!(joined, "Vecbool" | "Vecchar")    
+            },
+            _ => false
+        }
     }
 
     fn as_assigned_property(&self, offset: usize) -> Tokens<Rust> {
@@ -236,11 +245,43 @@ impl FieldReceiver {
         let joined = ty.iter().map(|i| i.to_string()).collect::<String>();
 
         if Self::allowed_types(joined.as_str()) {
-            let prim = joined.replace("Vec", "");
+            let p = joined.replace("Vec", "");
+            let prim = p.as_str();
+
+            if joined.ends_with("i8") {
+                return quote! {
+                    let fb_$name = table.get::<$fuo<$fvec<$prim>>>($offset, None);
+                    if let Some(vb) = fb_$name {
+                        let vec_u8 = vb.bytes().to_vec();
+                        let slice_u8 = vec_u8.as_slice();
+                        let slice_i8 = unsafe { &*(slice_u8 as *const _  as *const [i8]) };
+                        *$name = slice_i8.to_vec();
+                    }
+                };
+            }
+
+            if joined.ends_with("u8") {
+                return quote! {
+                    let fb_$name = table.get::<$fuo<$fvec<$prim>>>($offset, None);
+                    if let Some(vb) = fb_$name {
+                        *$name = vb.bytes().to_vec();
+                    }
+                };
+            }
+
+            if joined.ends_with("char") {
+                return quote! {
+                    let fb_$name = table.get::<$fuo<$fvec<u32>>>($offset, None);
+                    if let Some(c) = fb_$name {
+                        *$name = c.iter().filter_map(|s| char::from_u32(s)).collect();
+                    }
+                };
+            }
+
             return quote! {
-                let fb_vec_$name = table.get::<$fuo<$fvec<$prim>>>($offset, None);
-                if let Some(bv) = fb_vec_$name {
-                    *$name = bv.bytes().to_vec();
+                let fb_$name = table.get::<$fuo<$fvec<$prim>>>($offset, None);
+                if let Some(v) = fb_$name {
+                    *$name = v.iter().map(|s|s).collect();
                 }
             };
         }
@@ -315,15 +356,16 @@ impl FieldReceiver {
         let ty = path_visitor::get_idents_from_path(&self.ty);
         let joined = ty.iter().map(|i| i.to_string()).collect::<String>();
 
+        if Self::allowed_types(joined.as_str()) {
+            return quote! {
+                builder.push_slot_always($offset, vec_$offset);
+            };
+        }
+
         match joined.as_str() {
             "VecString" => {
                 quote! {
                   builder.push_slot_always($offset, vec_$offset);
-                }
-            },
-            "Vecu8" => {
-                quote! {
-                  builder.push_slot_always($offset, byte_vec_$offset);
                 }
             },
             "String" => {
@@ -367,6 +409,19 @@ impl FieldReceiver {
         let ty = path_visitor::get_idents_from_path(&self.ty);
         let joined = ty.iter().map(|i| i.to_string()).collect::<String>();
     
+        if Self::allowed_types(joined.as_str()) {
+            if joined.ends_with("char") {
+                return quote! {
+                    let vec_conversion_$offset: Vec<u32> = self.$name.iter().map(|s|u32::from(*s)).collect();
+                    let vec_$offset = builder.create_vector(&vec_conversion_$offset.as_slice());
+                };
+            }
+
+            return quote! {
+                let vec_$offset = builder.create_vector(&self.$name.as_slice());
+            };
+        }
+
         match joined.as_str() {
             "VecString" => {
                 quote! {
@@ -374,11 +429,6 @@ impl FieldReceiver {
                   .map(|s|builder.create_string(s.as_str()))
                   .collect::<Vec<$wip_offset<&str>>>();
                   let vec_$offset = builder.create_vector(strs_vec_$offset.as_slice());
-                }
-            },
-            "Vecu8" => {
-                quote! {
-                  let byte_vec_$offset = builder.create_vector(&self.$name.as_slice());
                 }
             },
             "String" => {
