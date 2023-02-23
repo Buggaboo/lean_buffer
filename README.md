@@ -8,7 +8,7 @@ leverage [flatbuffers](https://google.github.io/flatbuffers/flatbuffers_guide_us
 to flatten struct objects in `Vec<u8>`,
 which can be used later to reinflate them again as struct objects.
 
-All without the aid of `*.fbs` files.
+All without the aid of `*.fbs` files and flatc.
 
 This can be, in its turn, leveraged to facilitate inter-process / thread / channel communication.
 
@@ -20,7 +20,7 @@ in your crate project.
 See the `examples/usage.rs` for instructions.
 
 ## Interesting avenues of research
-* Transpile to WASM and pass messages between browsers, and [light-weight compute servers with Lunatic](https://github.com/lunatic-solutions/lunatic).
-* [Pass messages between Erlang-like actors with ractor](https://github.com/slawlor/ractor)
+* [Transpile to WASM](https://github.com/google/flatbuffers/issues/4332) and pass messages between browsers, and [light-weight compute servers with Lunatic](https://github.com/lunatic-solutions/lunatic). [Mind the scalar constraint: i32, i64, f32, f64](https://webassembly.github.io/spec/core/syntax/types.html#number-types).
+* [Pass messages between Erlang-like actors with ractor](https://github.com/slawlor/ractor).
 * Translate eBPF bytecode instructions to rust struct objects, combined with pattern matching, and share with userspace.
-* Somehow, by magic, merge this project with its [ObjectBox for rust progenitor](https://github.com/Buggaboo/objectbox-rust)
+* Somehow, by magic, merge this project with its [ObjectBox for rust progenitor](https://github.com/Buggaboo/objectbox-rust).
