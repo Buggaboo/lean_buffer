@@ -1,5 +1,8 @@
 # Lean buffer
 
+Rust macro for structs to leverage flatbuffers without *.fbs files and without bloated generated code.
+
+## Longer description
 This is a macro library, for Rust, that generates extension traits that 
 leverage [flatbuffers](https://google.github.io/flatbuffers/flatbuffers_guide_use_rust.html)
 to flatten struct objects in `Vec<u8>`,
