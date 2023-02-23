@@ -23,3 +23,4 @@ See the `examples/usage.rs` for instructions.
 * Transpile to WASM and pass messages between browsers, and [light-weight compute servers with Lunatic](https://github.com/lunatic-solutions/lunatic).
 * [Pass messages between Erlang-like actors with ractor](https://github.com/slawlor/ractor)
 * Translate eBPF bytecode instructions to rust struct objects, combined with pattern matching, and share with userspace.
+* Somehow, by magic, merge this project with its [ObjectBox for rust progenitor](https://github.com/Buggaboo/objectbox-rust)
