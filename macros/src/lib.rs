@@ -189,7 +189,7 @@ impl FieldReceiver {
         let name = self.ident.clone().unwrap().to_string();
         let ty = path_visitor::get_idents_from_path(&self.ty);
         let joined = ty.iter().map(|i| i.to_string()).collect::<String>();
-        if joined.starts_with("Vec") {
+        if Self::allowed_types(joined.as_str()) || joined.eq("VecString") {
             let prim = joined.replace("Vec", "");
             return quote! {
                 $name: Vec::<$prim>::new()
@@ -219,6 +219,14 @@ impl FieldReceiver {
         }
     }
 
+    fn allowed_types(joined: &str) -> bool {
+        ((joined.starts_with("Vecu") || joined.starts_with("Veci")) &&
+            ["8", "16", "32", "64"].iter().any(|d| joined.ends_with(d)))
+            || joined.starts_with("Vecf32") || joined.starts_with("Vecf64")
+            || joined.eq("Vecbool")
+            || joined.eq("Vecchar")
+    }
+
     fn as_assigned_property(&self, offset: usize) -> Tokens<Rust> {
         let fuo = &rust::import("flatbuffers", "ForwardsUOffset");
         let fvec = &rust::import("flatbuffers", "Vector");
@@ -227,7 +235,7 @@ impl FieldReceiver {
         let ty = path_visitor::get_idents_from_path(&self.ty);
         let joined = ty.iter().map(|i| i.to_string()).collect::<String>();
 
-        if joined.starts_with("Vecu") || joined.starts_with("Veci") {
+        if Self::allowed_types(joined.as_str()) {
             let prim = joined.replace("Vec", "");
             return quote! {
                 let fb_vec_$name = table.get::<$fuo<$fvec<$prim>>>($offset, None);
@@ -277,8 +285,7 @@ impl FieldReceiver {
         let ty = path_visitor::get_idents_from_path(&self.ty);
         let joined = ty.iter().map(|i| i.to_string()).collect::<String>();
 
-        // TODO match on regexp with two trailing decimals
-        if joined.starts_with("Vecu") || joined.starts_with("Veci") {
+        if Self::allowed_types(joined.as_str()) {
             return 3;
         }
 
@@ -304,6 +311,7 @@ impl FieldReceiver {
 
     fn encode_to_fb(&self, offset: usize) -> Tokens<Rust> {
         let name = &self.ident.clone().unwrap().to_string();
+        
         let ty = path_visitor::get_idents_from_path(&self.ty);
         let joined = ty.iter().map(|i| i.to_string()).collect::<String>();
 
