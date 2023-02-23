@@ -1,0 +1,11 @@
+[package]
+name = "lean-buffer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+lean-buffer-macros = { path = "macros" }
+chrono = "0.4"
+flatbuffers = "22.10.26"
+bytebuffer = "2.0.1"
+anymap = "0.12.1"

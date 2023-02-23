@@ -1,0 +1,16 @@
+[package]
+name = "lean-buffer-macros"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+builder = true
+
+[dependencies]
+proc-macro2 = { version = "1.0", default-features = false }
+syn = "1.0" # syn = { version = "1.0.107", default-features = false, features = ["full"] }
+prettyplease = "0.1.20"
+genco = "0.17.3"
+flatbuffers = "22.10.26"
+darling = "0.14.3"
