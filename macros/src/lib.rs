@@ -254,7 +254,7 @@ impl FieldReceiver {
                     if let Some(vb) = fb_$name {
                         let vec_u8 = vb.bytes().to_vec();
                         let slice_u8 = vec_u8.as_slice();
-                        let slice_i8 = unsafe { &*(slice_u8 as *const _  as *const [i8]) };
+                        let slice_i8 = &*(slice_u8 as *const _  as *const [i8]);
                         *$name = slice_i8.to_vec();
                     }
                 };
