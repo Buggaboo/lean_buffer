@@ -19,6 +19,12 @@ in your crate project.
 ## Usage
 See the `examples/usage.rs` for instructions.
 
+## PRs are welcome
+* Support for enum struct variants
+* Support for enums in general
+* Support for mixed primitive and composite struct values
+* Support for merged, simple build.rs to remove extraneous 'use', then concat all the '*_gen.rs' files into one 'lean_buffer_gen.rs'; prolly 'sed' and 'cat' would suffice
+
 ## Interesting avenues of research
 * [Transpile to WASM](https://github.com/google/flatbuffers/issues/4332) and pass messages between browsers, and [light-weight compute servers with Lunatic](https://github.com/lunatic-solutions/lunatic). [Mind the scalar constraint: i32, i64, f32, f64](https://webassembly.github.io/spec/core/syntax/types.html#number-types).
 * [Pass messages between Erlang-like actors with ractor](https://github.com/slawlor/ractor).
