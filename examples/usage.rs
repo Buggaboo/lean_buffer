@@ -28,6 +28,15 @@ struct Entity {
     t_float: f32,
 }
 
+/*
+// TODO
+#[derive(LeanBufferWrite)]
+enum NestedStructs {
+    Yes { t_bool: bool },
+    No { t_u64: u64 },
+}
+*/
+
 // Either copy this file from your project, or use the name convention
 // `<struct name>_lb_gen.rs` to include the generated file.
 include!(concat!(env!("OUT_DIR"), "/Entity_lb_gen.rs"));
@@ -47,7 +56,7 @@ fn main() {
     let a1 = Box::new(e1) as Box<dyn AdapterExt>;
 
     // flatten
-    a1.to_fb(&mut builder);
+    a1.flatten(&mut builder);
     let data = Vec::from(builder.finished_data());
 
     // inflate
@@ -56,7 +65,7 @@ fn main() {
 
     unsafe {
         let mut table = flatbuffers::Table::new(data_slice, first_offset);
-        let resurrected_e1 = f.make(&mut table);
+        let resurrected_e1 = f.inflate(&mut table);
 
         if resurrected_e1.t_i64 == e1_t_i64 {
             println!("Hello world! {}", resurrected_e1.t_i64);

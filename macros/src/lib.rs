@@ -102,7 +102,7 @@ impl InputReceiver {
 
         quote! {
           impl $factory_ext<$entity> for $factory<$entity> {
-            fn make(&self, table: &mut $fb_table) -> $entity {
+            fn inflate(&self, table: &mut $fb_table) -> $entity {
               let mut object = self.new_object();
               // destructure
               let $entity {
@@ -138,7 +138,7 @@ impl InputReceiver {
         let unnested_props: Vec<Tokens<Rust>> = fields
             .iter()
             .enumerate()
-            .map(|(i, p)| p.encode_to_fb_unnested(i * 2 + 4))
+            .map(|(i, p)| p.encode_flatten_unnested(i * 2 + 4))
             .collect();
 
         let mut props_unsorted: Vec<(usize, Tokens<Rust>)> = fields
@@ -147,7 +147,7 @@ impl InputReceiver {
             .map(|(i, p)| {
                 (
                     p.to_sorting_priority(),
-                    p.encode_to_fb(i * 2 + 4),
+                    p.encode_flatten(i * 2 + 4),
                 )
             })
             .collect();
@@ -157,7 +157,7 @@ impl InputReceiver {
 
         quote! {
           impl $bridge_trait for $entity {
-            fn to_fb(&self, builder: &mut $flatbuffer_builder) {
+            fn flatten(&self, builder: &mut $flatbuffer_builder) {
               builder.reset();
               $unnested_props
               let wip_offset_unfinished = builder.start_table();
@@ -350,7 +350,7 @@ impl FieldReceiver {
         }
     }
 
-    fn encode_to_fb(&self, offset: usize) -> Tokens<Rust> {
+    fn encode_flatten(&self, offset: usize) -> Tokens<Rust> {
         let name = &self.ident.clone().unwrap().to_string();
         
         let ty = path_visitor::get_idents_from_path(&self.ty);
@@ -403,7 +403,7 @@ impl FieldReceiver {
         }
     }
     
-    fn encode_to_fb_unnested(&self, offset: usize) -> Tokens<Rust> {
+    fn encode_flatten_unnested(&self, offset: usize) -> Tokens<Rust> {
         let wip_offset = &rust::import("flatbuffers", "WIPOffset");
         let name = &self.ident.clone().unwrap().to_string();
         let ty = path_visitor::get_idents_from_path(&self.ty);

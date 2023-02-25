@@ -4,7 +4,7 @@ use flatbuffers::{FlatBufferBuilder, Table};
 
 /// Applied to the struct
 pub trait AdapterExt {
-    fn to_fb(&self, builder: &mut FlatBufferBuilder);
+    fn flatten(&self, builder: &mut FlatBufferBuilder);
 }
 
 pub struct Factory<T> {
@@ -17,6 +17,6 @@ pub trait FactoryExt<T>
 where
     T: ?Sized,
 {
-    fn make(&self, table: &mut Table) -> T;
+    fn inflate(&self, table: &mut Table) -> T;
     fn new_object(&self) -> T;
 }

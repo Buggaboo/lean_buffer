@@ -45,7 +45,7 @@ fn main() {
     let a1 = Box::new(e1) as Box<dyn AdapterExt>;
 
     // flatten
-    a1.to_fb(&mut builder);
+    a1.flatten(&mut builder);
     let data = Vec::from(builder.finished_data());
 
     // inflate
@@ -54,7 +54,7 @@ fn main() {
 
     unsafe {
         let mut table = flatbuffers::Table::new(data_slice, first_offset);
-        let resurrected_e1 = f.make(&mut table);
+        let resurrected_e1 = f.inflate(&mut table);
 
         if resurrected_e1.t_vec_i64 == vec![0x8, 0x3, 0x3, 0xF] {
             println!("Hello world!");
