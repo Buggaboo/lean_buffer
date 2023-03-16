@@ -90,7 +90,7 @@ impl InputReceiver {
         let fb_table = &rust::import("flatbuffers", "Table");
         let factory = &rust::import("lean_buffer::traits", "Factory");
         let factory_ext = &rust::import("lean_buffer::traits", "FactoryExt");
-        let entity = &rust::import("crate", &self.ident.to_string());
+        let entity = &rust::import("self", &self.ident.to_string());
 
         let destructured_props = fields
             .iter()
@@ -124,7 +124,7 @@ impl InputReceiver {
     }
 
     fn generate_table_adapter(&self) -> Tokens<Rust> {
-        let entity = &rust::import("crate", &self.ident.to_string());
+        let entity = &rust::import("self", &self.ident.to_string());
         let bridge_trait = &rust::import("lean_buffer::traits", "AdapterExt");
         let flatbuffer_builder = &rust::import("flatbuffers", "FlatBufferBuilder");
 
