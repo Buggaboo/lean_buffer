@@ -28,15 +28,6 @@ struct Entity {
     t_float: f32,
 }
 
-/*
-// TODO
-#[derive(LeanBufferWrite)]
-enum NestedStructs {
-    Yes { t_bool: bool },
-    No { t_u64: u64 },
-}
-*/
-
 // Either copy this file from your project, or use the name convention
 // `<struct name>_lb_gen.rs` to include the generated file.
 include!(concat!(env!("OUT_DIR"), "/Entity_lb_gen.rs"));
