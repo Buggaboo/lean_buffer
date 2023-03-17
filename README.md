@@ -44,14 +44,13 @@ fn main() {
 
     // flatten
     a1.flatten(&mut builder);
-    let data = Vec::from(builder.finished_data());
+    let data = builder.finished_data();
 
     // inflate
-    let data_slice = data.as_slice();
-    let first_offset: usize = data_slice[0].into();
+    let first_offset: usize = data[0].into();
 
     unsafe {
-        let mut table = flatbuffers::Table::new(data_slice, first_offset);
+        let mut table = flatbuffers::Table::new(data, first_offset);
         let resurrected_e1 = f.inflate(&mut table);
 
         if resurrected_e1.t_i64 == e1_t_i64 {
@@ -85,8 +84,5 @@ This can be, in its turn, leveraged to facilitate inter-process / thread / chann
 To use this library, a `build.rs`, with an (empty) `fn main` is required,
 in your crate project.
 
-## PRs are welcome
-* Support for enum struct variants
-* Support for enums in general
-* Support for mixed primitive and composite struct values
-* Support for merged, simple build.rs to remove extraneous 'use', then concat all the '*_gen.rs' files into one 'lean_buffer_gen.rs'; prolly 'sed' and 'cat' would suffice
+## PRs are welcome!
+...
