@@ -17,6 +17,6 @@ pub trait FactoryExt<T>
 where
     T: ?Sized,
 {
-    fn inflate(&self, table: &mut Table) -> T;
+    fn inflate<'a>(&self, table: &mut Table<'a>) -> T;
     fn new_object(&self) -> T;
 }

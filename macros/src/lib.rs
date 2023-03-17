@@ -102,7 +102,7 @@ impl InputReceiver {
 
         quote! {
           impl $factory_ext<$entity> for $factory<$entity> {
-            fn inflate(&self, table: &mut $fb_table) -> $entity {
+            fn inflate<'a>(&self, table: &mut $fb_table<'a>) -> $entity {
               let mut object = self.new_object();
               // destructure
               let $entity {
@@ -189,50 +189,78 @@ impl FieldReceiver {
         let name = self.ident.clone().unwrap().to_string();
         let ty = path_visitor::get_idents_from_path(&self.ty);
         let joined = ty.iter().map(|i| i.to_string()).collect::<String>();
-        if Self::allowed_types(joined.as_str()) || joined.eq("VecString") {
+
+        if joined.starts_with("Option") {
+            let r = quote! {
+                $name: None
+            };
+            match joined.as_str() {
+                "OptionString" => r,
+                "Optionchar" => r,
+                "Optionbool" => r,
+                "Optionf32" => r,
+                "Optionf64" => r,
+                "Optioni8" => r,
+                "Optionu8" => r,
+                "Optioni16" => r,
+                "Optionu16" => r,
+                "Optioni32" => r,
+                "Optionu32" => r,
+                "Optioni64" => r,
+                "Optionu64" => r,
+                _ => panic!("Not supported: {}", joined),
+            }
+        }else if joined.starts_with("Vec") {
             let prim = joined.replace("Vec", "");
-            return quote! {
+            let r = quote! {
                 $name: Vec::<$prim>::new()
             };
-        }
-
-        match joined.as_str() {
-            "String" => quote! {
-                $name: String::from("")
-            },
-            "char" => quote! {
-                $name: char::from(0)
-            },
-            "bool" => quote! {
-                $name: false
-            },
-            "f32" => quote! {
-                $name: 0.0
-            },
-            "f64" => quote! {
-                $name: 0.0
-            },
-            // rest of the integer types
-            _ => quote! {
-                $name: 0
-            },
-        }
-    }
-
-    fn allowed_types(joined: &str) -> bool {
-        match joined.len() {
-            5 => {
-                matches!(joined, "Vecu8" | "Veci8")
+            match joined.as_str() {
+                "VecString" => r,
+                "Vecchar" => r,
+                "Vecbool" => r,
+                "Vecf32" => r,
+                "Vecf64" => r,
+                "Veci8" => r,
+                "Vecu8" => r,
+                "Veci16" => r,
+                "Vecu16" => r,
+                "Veci32" => r,
+                "Vecu32" => r,
+                "Veci64" => r,
+                "Vecu64" => r,
+                _ => panic!("Not supported: {}", joined),
             }
-            6 => {
-                (joined.starts_with("Vecu") || joined.starts_with("Veci")) &&
-                ["16", "32", "64"].iter().any(|d| joined.ends_with(d))
-                || matches!(joined, "Vecf32" | "Vecf64")
-            },
-            7 => {
-                matches!(joined, "Vecbool" | "Vecchar")    
-            },
-            _ => false
+        }else {
+            let r = quote! {
+                $(name.clone()): 0
+            };            
+            match joined.as_str() {
+                "String" => quote! {
+                    $name: String::from("")
+                },
+                "char" => quote! {
+                    $name: char::from(0)
+                },
+                "bool" => quote! {
+                    $name: false
+                },
+                "f32" => quote! {
+                    $name: 0.0
+                },
+                "f64" => quote! {
+                    $name: 0.0
+                },
+                "i8" => r,
+                "u8" => r,
+                "i16" => r,
+                "u16" => r,
+                "i32" => r,
+                "u32" => r,
+                "i64" => r,
+                "u64" => r,
+                _ => panic!("Not supported: {}", joined),
+            }            
         }
     }
 
@@ -244,12 +272,64 @@ impl FieldReceiver {
         let ty = path_visitor::get_idents_from_path(&self.ty);
         let joined = ty.iter().map(|i| i.to_string()).collect::<String>();
 
-        if Self::allowed_types(joined.as_str()) {
-            let p = joined.replace("Vec", "");
-            let prim = p.as_str();
-
-            if joined.ends_with("i8") {
-                return quote! {
+        if joined.starts_with("Option") {
+            let prim = joined.replace("Option", "");
+            let r = quote! {
+                *$name = table.get::<$prim>($offset, None);
+            };
+            match joined.as_str() {
+                "OptionString" => quote! {
+                    *$name = table.get::<$fuo<&str>>($offset, None).map(|s|s.to_string());
+                },
+                "Optionchar" => quote! {
+                    if let Some(v) = table.get::<u32>($offset, None) {
+                        *$name = std::char::from_u32(v);
+                    }
+                },
+                "Optionbool" => quote! {
+                    *$name = table.get::<bool>($offset, None);
+                },
+                "Optionf32" => quote! {
+                    *$name = table.get::<f32>($offset, None);
+                },
+                "Optionf64" => quote! {
+                    *$name = table.get::<f64>($offset, None);
+                },
+                "Optioni8" => r,
+                "Optionu8" => r,
+                "Optioni16" => r,
+                "Optionu16" => r,
+                "Optioni32" => r,
+                "Optionu32" => r,
+                "Optioni64" => r,
+                "Optionu64" => r,
+                _ => panic!("Not supported: {}", joined),
+            }  
+        }else if joined.starts_with("Vec") {
+            let prim = joined.replace("Vec", "");
+            let r = quote! {
+                let fb_$name = table.get::<$fuo<$fvec<$(prim.clone())>>>($offset, None);
+                if let Some(v) = fb_$name {
+                    *$name = v.iter().map(|s|s).collect();
+                }
+            };
+            match joined.as_str() {
+                "VecString" => quote!{
+                    let fb_$name = table.get::<$fuo<$fvec<'a, $fuo<&'a str>>>>($offset, None);
+                    if let Some(v) = fb_$name {
+                        *$name = v.iter().map(|s|s.to_string()).collect();
+                    }    
+                },
+                "Vecchar" => quote! {
+                    let fb_$name = table.get::<$fuo<$fvec<u32>>>($offset, None);
+                    if let Some(c) = fb_$name {
+                        *$name = c.iter().filter_map(|s| char::from_u32(s)).collect();
+                    }
+                },
+                "Vecbool" => r,
+                "Vecf32" => r,
+                "Vecf64" => r,
+                "Veci8" => quote! {
                     let fb_$name = table.get::<$fuo<$fvec<$prim>>>($offset, None);
                     if let Some(vb) = fb_$name {
                         let vec_u8 = vb.bytes().to_vec();
@@ -257,97 +337,119 @@ impl FieldReceiver {
                         let slice_i8 = &*(slice_u8 as *const _  as *const [i8]);
                         *$name = slice_i8.to_vec();
                     }
-                };
-            }
-
-            if joined.ends_with("u8") {
-                return quote! {
+                },
+                "Vecu8" => quote! {
                     let fb_$name = table.get::<$fuo<$fvec<$prim>>>($offset, None);
                     if let Some(vb) = fb_$name {
                         *$name = vb.bytes().to_vec();
                     }
-                };
+                },
+                "Veci16" => r,
+                "Vecu16" => r,
+                "Veci32" => r,
+                "Vecu32" => r,
+                "Veci64" => r,
+                "Vecu64" => r,
+                _ => panic!("Not supported: {}", joined),
             }
-
-            if joined.ends_with("char") {
-                return quote! {
-                    let fb_$name = table.get::<$fuo<$fvec<u32>>>($offset, None);
-                    if let Some(c) = fb_$name {
-                        *$name = c.iter().filter_map(|s| char::from_u32(s)).collect();
-                    }
-                };
-            }
-
-            return quote! {
-                let fb_$name = table.get::<$fuo<$fvec<$prim>>>($offset, None);
-                if let Some(v) = fb_$name {
-                    *$name = v.iter().map(|s|s).collect();
-                }
+        }else {
+            let r = quote! {
+                *$name = table.get::<$(joined.clone())>($offset, Some(0)).unwrap();
             };
-        }
-
-        match joined.as_str() {
-            "VecString" => quote! {
-                let fb_vec_$name = table.get::<$fuo<$fvec<$fuo<&str>>>>($offset, None);
-                if let Some(sv) = fb_vec_$name {
-                    *$name = sv.iter().map(|s|s.to_string()).collect();
-                }
-            },
-            "String" => quote! {
-                if let Some(s) = table.get::<$fuo<&str>>($offset, None) {
-                    *$name = s.to_string();
-                }
-            },
-            "char" => quote! {
-                let $(name)_u32 = table.get::<u32>($offset, Some(0)).unwrap();
-                if let Some(c) = std::char::from_u32($(name)_u32) {
-                    *$name = c;
-                }
-            },
-            "bool" => quote! {
-                *$name = table.get::<bool>($offset, Some(false)).unwrap();
-            },
-            "f32" => quote! {
-                *$name = table.get::<f32>($offset, Some(0.0)).unwrap();
-            },
-            "f64" => quote! {
-                *$name = table.get::<f64>($offset, Some(0.0)).unwrap();
-            },
-            // rest of the integer types
-            _ => {
-                quote! {
-                    *$name = table.get::<$joined>($offset, Some(0)).unwrap();
-                }
-            }
-        }
+            match joined.as_str() {
+                "String" => quote! {
+                    if let Some(s) = table.get::<$fuo<&str>>($offset, None) {
+                        *$name = s.to_string();
+                    }else {
+                        *$name = "".to_string();
+                    }
+                },
+                "char" => quote! {
+                    let $(name)_u32 = table.get::<u32>($offset, Some(0)).unwrap();
+                    if let Some(c) = std::char::from_u32($(name)_u32) {
+                        *$name = c;
+                    }
+                },
+                "bool" => quote! {
+                    *$name = table.get::<bool>($offset, Some(false)).unwrap();
+                },
+                "f32" => quote! {
+                    *$name = table.get::<f32>($offset, Some(0.0)).unwrap();
+                },
+                "f64" => quote! {
+                    *$name = table.get::<f64>($offset, Some(0.0)).unwrap();
+                },
+                "i8" => r,
+                "u8" => r,
+                "i16" => r,
+                "u16" => r,
+                "i32" => r,
+                "u32" => r,
+                "i64" => r,
+                "u64" => r,
+                _ => panic!("Not supported: {}", joined),
+            }            
+        }      
     }
 
+    // TODO close the gap
     fn to_sorting_priority(&self) -> usize {
         let ty = path_visitor::get_idents_from_path(&self.ty);
         let joined = ty.iter().map(|i| i.to_string()).collect::<String>();
 
-        if Self::allowed_types(joined.as_str()) {
-            return 3;
-        }
-
-        // naive packing
-        match joined.as_str() {
-            "f64" => 1,
-            "u64" => 1,
-            "i64" => 1,
-            "VecString" => 2,
-            "String" => 4,
-            "f32" => 5,
-            "u32" => 5,
-            "i32" => 5,
-            "char" => 5,
-            "u16" => 6,
-            "i16" => 6,
-            "bool" => 7,
-            "u8" => 7,
-            "i8" => 7,
-            _ => 8,
-        }
+        if joined.starts_with("Option") {
+            match joined.as_str() {
+                "Optionf64" => 1,
+                "Optionu64" => 1,
+                "Optioni64" => 1,
+                "OptionString" => 4,
+                "Optionf32" => 5,
+                "Optionu32" => 5,
+                "Optioni32" => 5,
+                "Optionchar" => 5,
+                "Optionu16" => 6,
+                "Optioni16" => 6,
+                "Optionbool" => 7,
+                "Optionu8" => 7,
+                "Optioni8" => 7,
+                _ => panic!("Not supported: {}", joined),
+            }
+        }else if joined.starts_with("Vec") {
+            let r = 2;
+            match joined.as_str() {
+                "VecString" => r,
+                "Vecchar" => r,
+                "Vecbool" => r,
+                "Vecf32" => r,
+                "Vecf64" => r,
+                "Veci8" => r,
+                "Vecu8" => r,
+                "Veci16" => r,
+                "Vecu16" => r,
+                "Veci32" => r,
+                "Vecu32" => r,
+                "Veci64" => r,
+                "Vecu64" => r,
+                _ => panic!("Not supported: {}", joined),
+            }
+        }else {
+            match joined.as_str() {
+                "f64" => 1,
+                "u64" => 1,
+                "i64" => 1,
+                "String" => 4,
+                "f32" => 5,
+                "u32" => 5,
+                "i32" => 5,
+                "char" => 5,
+                "u16" => 6,
+                "i16" => 6,
+                "bool" => 7,
+                "u8" => 7,
+                "i8" => 7,
+                _ => panic!("Not supported: {}", joined),
+            }            
+        }        
     }
 
     fn encode_flatten(&self, offset: usize) -> Tokens<Rust> {
@@ -356,51 +458,115 @@ impl FieldReceiver {
         let ty = path_visitor::get_idents_from_path(&self.ty);
         let joined = ty.iter().map(|i| i.to_string()).collect::<String>();
 
-        if Self::allowed_types(joined.as_str()) {
-            return quote! {
+        if joined.starts_with("Option") {
+            let p = joined.replace("Option", "");
+            let prim = p.as_str();
+    
+            let r = quote! {
+                if let Some(v) = self.$name {
+                    builder.push_slot::<$prim>($offset, v, 0);
+                }
+            };
+            match joined.as_str() {
+                "OptionString" => 
+                    quote! {
+                        if let Some(v) = self.$name.clone() {
+                            let str_$offset = builder.create_string(v.as_str());
+                            builder.push_slot_always($offset, str_$offset);
+                        }
+                    },
+                "Optionchar" => 
+                    // TODO test endianness
+                    quote! {
+                        if let Some(v) = self.$name {
+                            builder.push_slot_always($offset, v as u32);
+                        }
+                    },
+                "Optionbool" => 
+                    quote! {
+                        if let Some(v) = self.$name {
+                            builder.push_slot::<bool>($offset, v, false);
+                        }
+                    },
+                "Optionf32" => 
+                    quote! {
+                        if let Some(v) = self.$name {
+                            builder.push_slot::<f32>($offset, v, 0.0);
+                        }
+                    },
+                "Optionf64" => 
+                    quote! {
+                        if let Some(v) = self.$name {
+                            builder.push_slot::<f64>($offset, v, 0.0);
+                        }
+                    },
+                "Optioni8" => r,
+                "Optionu8" => r,
+                "Optioni16" => r,
+                "Optionu16" => r,
+                "Optioni32" => r,
+                "Optionu32" => r,
+                "Optioni64" => r,
+                "Optionu64" => r,
+                _ => panic!("Not supported: {}", joined),
+            }
+        }else if joined.starts_with("Vec") {
+            let r = quote! {
                 builder.push_slot_always($offset, vec_$offset);
             };
-        }
-
-        match joined.as_str() {
-            "VecString" => {
-                quote! {
-                  builder.push_slot_always($offset, vec_$offset);
-                }
-            },
-            "String" => {
-                quote! {
-                  builder.push_slot_always($offset, str_$offset);
-                }
-            },
-            "char" => {
-                // TODO test endianness
-                quote! {
-                  builder.push_slot_always($offset, self.$name as u32);
-                }
-            },
-            "bool" => {
-                quote! {
-                  builder.push_slot::<bool>($offset, self.$name, false);
-                }
-            },
-            "f32" => {
-                quote! {
-                  builder.push_slot::<f32>($offset, self.$name, 0.0);
-                }
-            },
-            "f64" => {
-                quote! {
-                  builder.push_slot::<f64>($offset, self.$name, 0.0);
-                }
-            },
-            // rest of the primitives
-            _ => {
-                quote! {
-                  builder.push_slot::<$joined>($offset, self.$name, 0);
-                }
+            match joined.as_str() {
+                "VecString" => r,
+                "Vecchar" => r,
+                "Vecbool" => r,
+                "Vecf32" => r,
+                "Vecf64" => r,
+                "Veci8" => r,
+                "Vecu8" => r,
+                "Veci16" => r,
+                "Vecu16" => r,
+                "Veci32" => r,
+                "Vecu32" => r,
+                "Veci64" => r,
+                "Vecu64" => r,
+                _ => panic!("Not supported: {}", joined),
             }
-        }
+        }else {
+            let r = quote! {
+                builder.push_slot::<$(joined.clone())>($offset, self.$name, 0);
+            };            
+            match joined.as_str() {
+                "String" => 
+                    quote! {
+                      builder.push_slot_always($offset, str_$offset);
+                    },
+                "char" => 
+                    // TODO test endianness
+                    quote! {
+                      builder.push_slot_always($offset, self.$name as u32);
+                    },
+                "bool" => 
+                    quote! {
+                      builder.push_slot::<bool>($offset, self.$name, false);
+                    },
+                "f32" => 
+                    quote! {
+                      builder.push_slot::<f32>($offset, self.$name, 0.0);
+                    },
+                "f64" => 
+                    quote! {
+                      builder.push_slot::<f64>($offset, self.$name, 0.0);
+                    },
+                "i8" => r,
+                "u8" => r,
+                "i16" => r,
+                "u16" => r,
+                "i32" => r,
+                "u32" => r,
+                "i64" => r,
+                "u64" => r,
+                _ => panic!("Not supported: {}", joined),
+            }            
+        }    
     }
     
     fn encode_flatten_unnested(&self, offset: usize) -> Tokens<Rust> {
@@ -408,36 +574,59 @@ impl FieldReceiver {
         let name = &self.ident.clone().unwrap().to_string();
         let ty = path_visitor::get_idents_from_path(&self.ty);
         let joined = ty.iter().map(|i| i.to_string()).collect::<String>();
-    
-        if Self::allowed_types(joined.as_str()) {
-            if joined.ends_with("char") {
-                return quote! {
-                    let vec_conversion_$offset: Vec<u32> = self.$name.iter().map(|s|u32::from(*s)).collect();
-                    let vec_$offset = builder.create_vector(&vec_conversion_$offset.as_slice());
-                };
-            }
 
-            return quote! {
+        if joined.starts_with("Option") {
+            quote!()
+        }else if joined.starts_with("Vec") {
+            let r = quote! {
                 let vec_$offset = builder.create_vector(&self.$name.as_slice());
             };
-        }
-
-        match joined.as_str() {
-            "VecString" => {
-                quote! {
-                  let strs_vec_$offset = self.$name.iter()
-                  .map(|s|builder.create_string(s.as_str()))
-                  .collect::<Vec<$wip_offset<&str>>>();
-                  let vec_$offset = builder.create_vector(strs_vec_$offset.as_slice());
-                }
-            },
-            "String" => {
-                quote! {
-                  let str_$offset = builder.create_string(self.$name.as_str());
-                }
-            },
-            _ => quote!(),
-        }
+            match joined.as_str() {
+                "VecString" => quote! {
+                    let strs_vec_$offset = self.$name.iter()
+                    .map(|s|builder.create_string(s.as_str()))
+                    .collect::<Vec<$wip_offset<&str>>>();
+                    let vec_$offset = builder.create_vector(strs_vec_$offset.as_slice());
+                  },
+                "Vecchar" => quote! {
+                    let vec_conversion_$offset: Vec<u32> = self.$name.iter().map(|s|u32::from(*s)).collect();
+                    let vec_$offset = builder.create_vector(&vec_conversion_$offset.as_slice());
+                },
+                "Vecbool" => r,
+                "Vecf32" => r,
+                "Vecf64" => r,
+                "Veci8" => r,
+                "Vecu8" => r,
+                "Veci16" => r,
+                "Vecu16" => r,
+                "Veci32" => r,
+                "Vecu32" => r,
+                "Veci64" => r,
+                "Vecu64" => r,
+                _ => panic!("Not supported: {}", joined),
+            }
+        }else {
+            let r = quote!();            
+            match joined.as_str() {
+                "String" => 
+                    quote! {
+                        let str_$offset = builder.create_string(self.$name.as_str());
+                    },
+                "char" => r,
+                "bool" => r,
+                "f32" => r,
+                "f64" => r,
+                "i8" => r,
+                "u8" => r,
+                "i16" => r,
+                "u16" => r,
+                "i32" => r,
+                "u32" => r,
+                "i64" => r,
+                "u64" => r,
+                _ => panic!("Not supported: {}", joined),
+            }
+        }         
     }
 }
 

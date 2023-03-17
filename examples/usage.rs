@@ -22,8 +22,6 @@ struct Entity {
     t_i8: i8,
     t_bool: bool,
     t_string: String,
-    t_vec_string: Vec<String>,
-    t_vec_u8: Vec<u8>,
     t_double: f64,
     t_float: f32,
 }
@@ -48,14 +46,13 @@ fn main() {
 
     // flatten
     a1.flatten(&mut builder);
-    let data = Vec::from(builder.finished_data());
+    let data = builder.finished_data();
 
     // inflate
-    let data_slice = data.as_slice();
-    let first_offset: usize = data_slice[0].into();
+    let first_offset: usize = data[0].into();
 
     unsafe {
-        let mut table = flatbuffers::Table::new(data_slice, first_offset);
+        let mut table = flatbuffers::Table::new(data, first_offset);
         let resurrected_e1 = f.inflate(&mut table);
 
         if resurrected_e1.t_i64 == e1_t_i64 {

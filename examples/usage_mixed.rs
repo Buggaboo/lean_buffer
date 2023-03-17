@@ -10,7 +10,33 @@ use lean_buffer::{
 // proc macro `LeanBufferWrite` not expanded: proc macro not found in the built dylib
 // Just check if the generated file can be located.
 #[derive(LeanBufferWrite)]
-struct EntityVecs {
+struct EntityMixed {
+    t_u64: u64,
+    t_i64: i64,
+    t_u32: u32,
+    t_i32: i32,
+    t_char: char,
+    t_u16: u16,
+    t_i16: i16,
+    t_u8: u8,
+    t_i8: i8,
+    t_bool: bool,
+    t_string: String,
+    t_double: f64,
+    t_float: f32,
+    t_opt_u64: Option<u64>,
+    t_opt_i64: Option<i64>,
+    t_opt_u32: Option<u32>,
+    t_opt_i32: Option<i32>,
+    t_opt_char: Option<char>,
+    t_opt_u16: Option<u16>,
+    t_opt_i16: Option<i16>,
+    t_opt_u8: Option<u8>,
+    t_opt_i8: Option<i8>,
+    t_opt_bool: Option<bool>,
+    t_opt_string: Option<String>,
+    t_opt_double: Option<f64>,
+    t_opt_float: Option<f32>,
     t_vec_u64: Vec<u64>,
     t_vec_i64: Vec<i64>,
     t_vec_u32: Vec<u32>,
@@ -23,24 +49,24 @@ struct EntityVecs {
     t_vec_bool: Vec<bool>,
     t_vec_string: Vec<String>,
     t_vec_double: Vec<f64>,
-    t_vec_float: Vec<f32>,
+    t_vec_float: Vec<f32>,    
 }
 
 // Either copy this file from your project, or use the name convention
 // `<struct name>_lb_gen.rs` to include the generated file.
-include!(concat!(env!("OUT_DIR"), "/EntityVecs_lb_gen.rs"));
+include!(concat!(env!("OUT_DIR"), "/EntityMixed_lb_gen.rs"));
 
 fn main() {
     let mut builder = FlatBufferBuilder::new();
 
-    let factory = Factory::<EntityVecs> {
+    let factory = Factory::<EntityMixed> {
         phantom_data: std::marker::PhantomData,
     };
-    let f = Rc::new(factory) as Rc<dyn FactoryExt<EntityVecs>>;
+    let f = Rc::new(factory) as Rc<dyn FactoryExt<EntityMixed>>;
     let mut e1 = f.new_object();
 
-    let v = vec![0x8, 0x3, 0x3, 0xF];
-    e1.t_vec_i64 = v;
+    e1.t_i64 = 0x1337833F;
+    let e1_t_i64 = e1.t_i64;
 
     let a1 = Box::new(e1) as Box<dyn AdapterExt>;
 
@@ -55,10 +81,10 @@ fn main() {
         let mut table = flatbuffers::Table::new(data, first_offset);
         let resurrected_e1 = f.inflate(&mut table);
 
-        if resurrected_e1.t_vec_i64 == vec![0x8, 0x3, 0x3, 0xF] {
-            println!("Hello world!");
+        if resurrected_e1.t_i64 == e1_t_i64 {
+            println!("Hello world! {}", resurrected_e1.t_i64);
         } else {
-            println!("Goodbye cruel world!");
+            println!("Goodbye cruel world! {}", resurrected_e1.t_i64);
         }
     }
 }
