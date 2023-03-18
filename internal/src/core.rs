@@ -31,11 +31,11 @@ pub struct InputReceiver {
 }
 
 impl InputReceiver {
-    pub fn write(&mut self) {
+    pub fn write(&mut self, factory_module: Option<String>, factory_name: Option<String>) {
         if let Some(out_dir) = env::var_os("OUT_DIR") {
             let dest_path =
                 Path::new(&out_dir).join(format!("{}_lb_gen.rs", self.ident.to_string().clone()));
-            let code = self.generate_code();
+            let code = self.generate_code(factory_module, factory_name);
             if let Err(error) = fs::write(&dest_path, code.as_str()) {
                 panic!(
                     "There is a problem writing the generated rust code: {:?}",
@@ -47,10 +47,10 @@ impl InputReceiver {
         }
     }
 
-    pub fn generate_code(&self) -> String {
+    pub fn generate_code(&self, factory_module: Option<String>, factory_name: Option<String>) -> String {
         let tokens = &mut rust::Tokens::new();
 
-        tokens.append(self.generate_factory());
+        tokens.append(self.generate_factory(factory_module.unwrap_or("lean_buffer::traits".to_string()).as_str(), factory_name.unwrap_or("Factory".to_string()).as_str()));
         tokens.append(self.generate_table_adapter());
 
         let vector = tokens_to_string(tokens);
@@ -75,7 +75,7 @@ impl InputReceiver {
         prettyplease::unparse(&syntax_tree)
     }
 
-    fn generate_factory(&self) -> Tokens<Rust> {
+    fn generate_factory(&self, factory_module: &str, factory_name: &str) -> Tokens<Rust> {
         let fields = self.data
             .as_ref()
             .take_struct()
@@ -83,7 +83,7 @@ impl InputReceiver {
             .fields;
 
         let fb_table = &rust::import("flatbuffers", "Table");
-        let factory = &rust::import("lean_buffer::traits", "Factory");
+        let factory = &rust::import(factory_module, factory_name);
         let factory_ext = &rust::import("lean_buffer::traits", "FactoryExt");
         let entity = &rust::import("self", &self.ident.to_string());
 
