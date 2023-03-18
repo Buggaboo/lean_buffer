@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-extern crate internal;
+extern crate lean_buffer_internal as internal;
 
 use std::str::FromStr;
 

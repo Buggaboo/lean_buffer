@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-internal = { path = "internal" }
+lean-buffer-internal = { path = "internal" }
 lean-buffer-macros = { path = "macros" }
 flatbuffers = "22.10.26"
 

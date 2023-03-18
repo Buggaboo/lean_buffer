@@ -1,5 +1,5 @@
 use darling::FromDeriveInput;
-use internal::core::InputReceiver;
+use lean_buffer_internal::core::InputReceiver;
 
 fn main() {
     let input = syn::parse_str(
