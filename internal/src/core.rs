@@ -68,6 +68,39 @@ impl InputReceiver {
             );
         }
     }
+    
+    /// Not prettified
+    pub fn write_raw(
+        &mut self,
+        dest_path: &PathBuf,
+        factory_module: Option<String>,
+        factory_name: Option<String>,
+        as_module_alias: Option<String>,
+    ) {
+        let tokens = &mut rust::Tokens::new();
+        self.generate_tokens(tokens, factory_module, factory_name, as_module_alias);
+        if let Err(error) = fs::write(&dest_path, tokens.to_string().expect("Could not convert tokens to String").as_str()) {
+            panic!(
+                "There is a problem writing the generated rust code: {:?}",
+                error
+            );
+        }
+    }
+
+    pub fn write_raw_to_out_dir(
+        &mut self,
+        factory_module: Option<String>,
+        factory_name: Option<String>,
+        as_module_alias: Option<String>,
+    ) {
+        if let Some(out_dir) = env::var_os("OUT_DIR") {
+            let dest_path =
+                Path::new(&out_dir).join(format!("{}_lb_gen.rs", self.ident.to_string().clone()));
+            self.write_raw(&dest_path, factory_module, factory_name, as_module_alias);
+        } else {
+            panic!("Missing OUT_DIR environment variable, add a `build.rs` with at least an empty `fn main` to the root of your project");
+        }
+    }
 
     pub fn write_to_out_dir(
         &mut self,
