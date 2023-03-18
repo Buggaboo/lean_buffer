@@ -95,7 +95,7 @@ impl InputReceiver {
     ) {
         if let Some(out_dir) = env::var_os("OUT_DIR") {
             let dest_path =
-                Path::new(&out_dir).join(format!("{}_lb_gen.rs", self.ident.to_string().clone()));
+                Path::new(&out_dir).join(format!("{}_lb_raw_gen.rs", self.ident.to_string().clone()));
             self.write_raw(&dest_path, factory_module, factory_name, as_module_alias);
         } else {
             panic!("Missing OUT_DIR environment variable, add a `build.rs` with at least an empty `fn main` to the root of your project");
