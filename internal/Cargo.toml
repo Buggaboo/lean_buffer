@@ -1,13 +1,11 @@
 [package]
-name = "lean-buffer"
+name = "internal"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-internal = { path = "internal" }
-lean-buffer-macros = { path = "macros" }
-flatbuffers = "22.10.26"
-
-[dev-dependencies]
 syn = "1.0" # syn = { version = "1.0.107", default-features = false, features = ["full"] }
+prettyplease = "0.1.20"
+genco = "0.17.3"
+flatbuffers = "22.10.26"
 darling = "0.14.3"
