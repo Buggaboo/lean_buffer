@@ -86,3 +86,6 @@ in your crate project.
 
 ## PRs are welcome!
 ...
+
+## TODO
+* [lean-buffer-internal](internal/src/util.rs) begs to be put in its own project, with its non-regexp, tokenization, file merging features. Working name: rs-ast-bundler?

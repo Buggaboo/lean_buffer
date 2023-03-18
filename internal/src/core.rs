@@ -1,4 +1,7 @@
-use std::{env, fs, path::Path};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+};
 
 use darling::{ast, FromDeriveInput, FromField};
 use genco::{
@@ -10,7 +13,7 @@ use genco::fmt;
 
 use crate::path_visitor;
 
-fn tokens_to_string(tokens: &Tokens<Rust>) -> Vec<u8> {
+pub fn tokens_to_string(tokens: &Tokens<Rust>) -> Vec<u8> {
     let mut w = fmt::IoWriter::new(Vec::<u8>::new());
 
     let fmt = fmt::Config::from_lang::<Rust>().with_indentation(fmt::Indentation::Space(4));
@@ -25,6 +28,33 @@ fn tokens_to_string(tokens: &Tokens<Rust>) -> Vec<u8> {
     w.into_inner()
 }
 
+pub fn generate_pretty_plain_text_from_tokens(tokens: &mut rust::Tokens) -> String {
+    let vector = tokens_to_string(tokens);
+
+    let utf = match std::str::from_utf8(vector.as_slice()) {
+        Ok(utf) => utf,
+        Err(error) => panic!(
+            "There is a problem with converting bytes to utf8: {}",
+            error
+        ),
+    };
+
+    generate_pretty_plain_text(utf)
+}
+
+pub fn generate_pretty_plain_text(utf: &str) -> String {
+    let syntax_tree = match syn::parse_file(utf) {
+        Ok(parsed) => parsed,
+        Err(error) => panic!(
+            "There is a problem with parsing the generated rust code: {}",
+            error
+        ),
+    };
+
+    // it seems that genco's code formatting is broken on stable
+    prettyplease::unparse(&syntax_tree)
+}
+
 #[derive(Debug, FromDeriveInput)]
 #[darling(attributes(lean_buffer_internal), supports(struct_any))]
 pub struct InputReceiver {
@@ -36,6 +66,24 @@ pub struct InputReceiver {
 impl InputReceiver {
     pub fn write(
         &mut self,
+        dest_path: &PathBuf,
+        factory_module: Option<String>,
+        factory_name: Option<String>,
+        as_module_alias: Option<String>,
+    ) {
+        let tokens = &mut rust::Tokens::new();
+        self.generate_tokens(tokens, factory_module, factory_name, as_module_alias);
+        let code = generate_pretty_plain_text_from_tokens(tokens);
+        if let Err(error) = fs::write(&dest_path, code.as_str()) {
+            panic!(
+                "There is a problem writing the generated rust code: {:?}",
+                error
+            );
+        }
+    }
+
+    pub fn write_to_out_dir(
+        &mut self,
         factory_module: Option<String>,
         factory_name: Option<String>,
         as_module_alias: Option<String>,
@@ -43,26 +91,19 @@ impl InputReceiver {
         if let Some(out_dir) = env::var_os("OUT_DIR") {
             let dest_path =
                 Path::new(&out_dir).join(format!("{}_lb_gen.rs", self.ident.to_string().clone()));
-            let code = self.generate_code(factory_module, factory_name, as_module_alias);
-            if let Err(error) = fs::write(&dest_path, code.as_str()) {
-                panic!(
-                    "There is a problem writing the generated rust code: {:?}",
-                    error
-                );
-            }
+            self.write(&dest_path, factory_module, factory_name, as_module_alias);
         } else {
             panic!("Missing OUT_DIR environment variable, add a `build.rs` with at least an empty `fn main` to the root of your project");
         }
     }
 
-    pub fn generate_code(
+    pub fn generate_tokens(
         &self,
+        tokens: &mut rust::Tokens,
         factory_module: Option<String>,
         factory_name: Option<String>,
         as_module_alias: Option<String>,
-    ) -> String {
-        let tokens = &mut rust::Tokens::new();
-
+    ) {
         tokens.append(
             self.generate_factory(
                 factory_module
@@ -73,27 +114,6 @@ impl InputReceiver {
             ),
         );
         tokens.append(self.generate_table_adapter());
-
-        let vector = tokens_to_string(tokens);
-
-        let utf = match std::str::from_utf8(vector.as_slice()) {
-            Ok(utf) => utf,
-            Err(error) => panic!(
-                "There is a problem with converting bytes to utf8: {}",
-                error
-            ),
-        };
-
-        let syntax_tree = match syn::parse_file(utf) {
-            Ok(parsed) => parsed,
-            Err(error) => panic!(
-                "There is a problem with parsing the generated rust code: {}",
-                error
-            ),
-        };
-
-        // it seems that genco's code formatting is broken on stable
-        prettyplease::unparse(&syntax_tree)
     }
 
     fn generate_factory(
@@ -110,7 +130,8 @@ impl InputReceiver {
             .fields;
 
         let fb_table = &rust::import("flatbuffers", "Table");
-        let factory = &rust::import(factory_module, factory_name).with_module_alias(as_module_alias);
+        let factory =
+            &rust::import(factory_module, factory_name).with_module_alias(as_module_alias);
         let factory_ext = &rust::import("lean_buffer::traits", "FactoryExt");
         let entity = &rust::import("self", &self.ident.to_string());
 

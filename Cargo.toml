@@ -8,6 +8,9 @@ lean-buffer-internal = { path = "internal" }
 lean-buffer-macros = { path = "macros" }
 flatbuffers = "22.10.26"
 
+[build-dependencies]
+lean-buffer-internal = { path = "internal" }
+
 [dev-dependencies]
 syn = "1.0" # syn = { version = "1.0.107", default-features = false, features = ["full"] }
 darling = "0.14.3"

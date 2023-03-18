@@ -18,6 +18,6 @@ pub fn derive_fb_code_then_write(input: TokenStream) -> TokenStream {
     out.extend(input.clone());
     let parsed = syn::parse::<DeriveInput>(out).expect("crash");
     let mut receiver = InputReceiver::from_derive_input(&parsed).expect("crash");
-    receiver.write(None, None, None);
+    receiver.write_to_out_dir(None, None, None);
     TokenStream::new()
 }
