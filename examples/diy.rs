@@ -23,7 +23,8 @@ fn main() {
                 t_float: f32,
             }
         "#,
-    ).unwrap();
+    )
+    .unwrap();
     let receiver = InputReceiver::from_derive_input(&input).unwrap();
     assert!(receiver.data.is_struct());
 }

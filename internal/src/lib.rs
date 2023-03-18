@@ -1,4 +1,4 @@
 #![allow(dead_code)]
 
-pub mod path_visitor;
 pub mod core;
+pub mod path_visitor;

@@ -49,7 +49,7 @@ struct EntityMixed {
     t_vec_bool: Vec<bool>,
     t_vec_string: Vec<String>,
     t_vec_double: Vec<f64>,
-    t_vec_float: Vec<f32>,    
+    t_vec_float: Vec<f32>,
 }
 
 // Either copy this file from your project, or use the name convention

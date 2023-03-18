@@ -1,7 +1,10 @@
-use std::{env, path::Path, fs};
+use std::{env, fs, path::Path};
 
 use darling::{ast, FromDeriveInput, FromField};
-use genco::{prelude::{Rust, rust}, Tokens, quote};
+use genco::{
+    prelude::{rust, Rust},
+    quote, Tokens,
+};
 
 use genco::fmt;
 
@@ -31,26 +34,44 @@ pub struct InputReceiver {
 }
 
 impl InputReceiver {
-    pub fn write(&mut self, factory_module: Option<String>, factory_name: Option<String>) {
+    pub fn write(
+        &mut self,
+        factory_module: Option<String>,
+        factory_name: Option<String>,
+        as_alias: Option<String>,
+    ) {
         if let Some(out_dir) = env::var_os("OUT_DIR") {
             let dest_path =
                 Path::new(&out_dir).join(format!("{}_lb_gen.rs", self.ident.to_string().clone()));
-            let code = self.generate_code(factory_module, factory_name);
+            let code = self.generate_code(factory_module, factory_name, as_alias);
             if let Err(error) = fs::write(&dest_path, code.as_str()) {
                 panic!(
                     "There is a problem writing the generated rust code: {:?}",
                     error
                 );
-            }    
+            }
         } else {
             panic!("Missing OUT_DIR environment variable, add a `build.rs` with at least an empty `fn main` to the root of your project");
         }
     }
 
-    pub fn generate_code(&self, factory_module: Option<String>, factory_name: Option<String>) -> String {
+    pub fn generate_code(
+        &self,
+        factory_module: Option<String>,
+        factory_name: Option<String>,
+        as_alias: Option<String>,
+    ) -> String {
         let tokens = &mut rust::Tokens::new();
 
-        tokens.append(self.generate_factory(factory_module.unwrap_or("lean_buffer::traits".to_string()).as_str(), factory_name.unwrap_or("Factory".to_string()).as_str()));
+        tokens.append(
+            self.generate_factory(
+                factory_module
+                    .unwrap_or("lean_buffer::traits".to_string())
+                    .as_str(),
+                factory_name.unwrap_or("Factory".to_string()).as_str(),
+                as_alias.unwrap_or("f".to_string()).as_str(),
+            ),
+        );
         tokens.append(self.generate_table_adapter());
 
         let vector = tokens_to_string(tokens);
@@ -75,21 +96,25 @@ impl InputReceiver {
         prettyplease::unparse(&syntax_tree)
     }
 
-    fn generate_factory(&self, factory_module: &str, factory_name: &str) -> Tokens<Rust> {
-        let fields = self.data
+    fn generate_factory(
+        &self,
+        factory_module: &str,
+        factory_name: &str,
+        as_alias: &str,
+    ) -> Tokens<Rust> {
+        let fields = self
+            .data
             .as_ref()
             .take_struct()
             .expect("Enums are not supported (yet)")
             .fields;
 
         let fb_table = &rust::import("flatbuffers", "Table");
-        let factory = &rust::import(factory_module, factory_name);
+        let factory = &rust::import(factory_module, factory_name).with_alias(as_alias);
         let factory_ext = &rust::import("lean_buffer::traits", "FactoryExt");
         let entity = &rust::import("self", &self.ident.to_string());
 
-        let destructured_props = fields
-            .iter()
-            .map(|p| p.as_struct_property_default());
+        let destructured_props = fields.iter().map(|p| p.as_struct_property_default());
         let assigned_props = fields
             .iter()
             .enumerate()
@@ -124,7 +149,8 @@ impl InputReceiver {
         let flatbuffer_builder = &rust::import("flatbuffers", "FlatBufferBuilder");
 
         // TODO Box or Rc instances, and define a `fn get_fields(&self) -> Vec<Rc<clone>>`
-        let fields = self.data
+        let fields = self
+            .data
             .as_ref()
             .take_struct()
             .expect("Enums are not supported (yet)")
@@ -139,12 +165,7 @@ impl InputReceiver {
         let mut props_unsorted: Vec<(usize, Tokens<Rust>)> = fields
             .iter()
             .enumerate()
-            .map(|(i, p)| {
-                (
-                    p.to_sorting_priority(),
-                    p.encode_flatten(i * 2 + 4),
-                )
-            })
+            .map(|(i, p)| (p.to_sorting_priority(), p.encode_flatten(i * 2 + 4)))
             .collect();
 
         props_unsorted.sort_by(|a, b| a.0.cmp(&b.0));
@@ -205,7 +226,7 @@ impl FieldReceiver {
                 "Optionu64" => r,
                 _ => panic!("Not supported: {}", joined),
             }
-        }else if joined.starts_with("Vec") {
+        } else if joined.starts_with("Vec") {
             let prim = joined.replace("Vec", "");
             let r = quote! {
                 $name: Vec::<$prim>::new()
@@ -226,10 +247,10 @@ impl FieldReceiver {
                 "Vecu64" => r,
                 _ => panic!("Not supported: {}", joined),
             }
-        }else {
+        } else {
             let r = quote! {
                 $(name.clone()): 0
-            };            
+            };
             match joined.as_str() {
                 "String" => quote! {
                     $name: String::from("")
@@ -255,7 +276,7 @@ impl FieldReceiver {
                 "i64" => r,
                 "u64" => r,
                 _ => panic!("Not supported: {}", joined),
-            }            
+            }
         }
     }
 
@@ -299,8 +320,8 @@ impl FieldReceiver {
                 "Optioni64" => r,
                 "Optionu64" => r,
                 _ => panic!("Not supported: {}", joined),
-            }  
-        }else if joined.starts_with("Vec") {
+            }
+        } else if joined.starts_with("Vec") {
             let prim = joined.replace("Vec", "");
             let r = quote! {
                 let fb_$name = table.get::<$fuo<$fvec<$(prim.clone())>>>($offset, None);
@@ -309,11 +330,11 @@ impl FieldReceiver {
                 }
             };
             match joined.as_str() {
-                "VecString" => quote!{
+                "VecString" => quote! {
                     let fb_$name = table.get::<$fuo<$fvec<'a, $fuo<&'a str>>>>($offset, None);
                     if let Some(v) = fb_$name {
                         *$name = v.iter().map(|s|s.to_string()).collect();
-                    }    
+                    }
                 },
                 "Vecchar" => quote! {
                     let fb_$name = table.get::<$fuo<$fvec<u32>>>($offset, None);
@@ -347,7 +368,7 @@ impl FieldReceiver {
                 "Vecu64" => r,
                 _ => panic!("Not supported: {}", joined),
             }
-        }else {
+        } else {
             let r = quote! {
                 *$name = table.get::<$(joined.clone())>($offset, Some(0)).unwrap();
             };
@@ -383,8 +404,8 @@ impl FieldReceiver {
                 "i64" => r,
                 "u64" => r,
                 _ => panic!("Not supported: {}", joined),
-            }            
-        }      
+            }
+        }
     }
 
     // TODO close the gap
@@ -409,7 +430,7 @@ impl FieldReceiver {
                 "Optioni8" => 7,
                 _ => panic!("Not supported: {}", joined),
             }
-        }else if joined.starts_with("Vec") {
+        } else if joined.starts_with("Vec") {
             let r = 2;
             match joined.as_str() {
                 "VecString" => r,
@@ -427,7 +448,7 @@ impl FieldReceiver {
                 "Vecu64" => r,
                 _ => panic!("Not supported: {}", joined),
             }
-        }else {
+        } else {
             match joined.as_str() {
                 "f64" => 1,
                 "u64" => 1,
@@ -443,58 +464,56 @@ impl FieldReceiver {
                 "u8" => 7,
                 "i8" => 7,
                 _ => panic!("Not supported: {}", joined),
-            }            
-        }        
+            }
+        }
     }
 
     fn encode_flatten(&self, offset: usize) -> Tokens<Rust> {
         let name = &self.ident.clone().unwrap().to_string();
-        
+
         let ty = path_visitor::get_idents_from_path(&self.ty);
         let joined = ty.iter().map(|i| i.to_string()).collect::<String>();
 
         if joined.starts_with("Option") {
             let p = joined.replace("Option", "");
             let prim = p.as_str();
-    
+
             let r = quote! {
                 if let Some(v) = self.$name {
                     builder.push_slot::<$prim>($offset, v, 0);
                 }
             };
             match joined.as_str() {
-                "OptionString" => 
-                    quote! {
-                        if let Some(v) = self.$name.clone() {
-                            let str_$offset = builder.create_string(v.as_str());
-                            builder.push_slot_always($offset, str_$offset);
-                        }
-                    },
-                "Optionchar" => 
-                    // TODO test endianness
+                "OptionString" => quote! {
+                    if let Some(v) = self.$name.clone() {
+                        let str_$offset = builder.create_string(v.as_str());
+                        builder.push_slot_always($offset, str_$offset);
+                    }
+                },
+                "Optionchar" =>
+                // TODO test endianness
+                {
                     quote! {
                         if let Some(v) = self.$name {
                             builder.push_slot_always($offset, v as u32);
                         }
-                    },
-                "Optionbool" => 
-                    quote! {
-                        if let Some(v) = self.$name {
-                            builder.push_slot::<bool>($offset, v, false);
-                        }
-                    },
-                "Optionf32" => 
-                    quote! {
-                        if let Some(v) = self.$name {
-                            builder.push_slot::<f32>($offset, v, 0.0);
-                        }
-                    },
-                "Optionf64" => 
-                    quote! {
-                        if let Some(v) = self.$name {
-                            builder.push_slot::<f64>($offset, v, 0.0);
-                        }
-                    },
+                    }
+                }
+                "Optionbool" => quote! {
+                    if let Some(v) = self.$name {
+                        builder.push_slot::<bool>($offset, v, false);
+                    }
+                },
+                "Optionf32" => quote! {
+                    if let Some(v) = self.$name {
+                        builder.push_slot::<f32>($offset, v, 0.0);
+                    }
+                },
+                "Optionf64" => quote! {
+                    if let Some(v) = self.$name {
+                        builder.push_slot::<f64>($offset, v, 0.0);
+                    }
+                },
                 "Optioni8" => r,
                 "Optionu8" => r,
                 "Optioni16" => r,
@@ -505,7 +524,7 @@ impl FieldReceiver {
                 "Optionu64" => r,
                 _ => panic!("Not supported: {}", joined),
             }
-        }else if joined.starts_with("Vec") {
+        } else if joined.starts_with("Vec") {
             let r = quote! {
                 builder.push_slot_always($offset, vec_$offset);
             };
@@ -525,32 +544,30 @@ impl FieldReceiver {
                 "Vecu64" => r,
                 _ => panic!("Not supported: {}", joined),
             }
-        }else {
+        } else {
             let r = quote! {
                 builder.push_slot::<$(joined.clone())>($offset, self.$name, 0);
-            };            
+            };
             match joined.as_str() {
-                "String" => 
-                    quote! {
-                      builder.push_slot_always($offset, str_$offset);
-                    },
-                "char" => 
-                    // TODO test endianness
+                "String" => quote! {
+                  builder.push_slot_always($offset, str_$offset);
+                },
+                "char" =>
+                // TODO test endianness
+                {
                     quote! {
                       builder.push_slot_always($offset, self.$name as u32);
-                    },
-                "bool" => 
-                    quote! {
-                      builder.push_slot::<bool>($offset, self.$name, false);
-                    },
-                "f32" => 
-                    quote! {
-                      builder.push_slot::<f32>($offset, self.$name, 0.0);
-                    },
-                "f64" => 
-                    quote! {
-                      builder.push_slot::<f64>($offset, self.$name, 0.0);
-                    },
+                    }
+                }
+                "bool" => quote! {
+                  builder.push_slot::<bool>($offset, self.$name, false);
+                },
+                "f32" => quote! {
+                  builder.push_slot::<f32>($offset, self.$name, 0.0);
+                },
+                "f64" => quote! {
+                  builder.push_slot::<f64>($offset, self.$name, 0.0);
+                },
                 "i8" => r,
                 "u8" => r,
                 "i16" => r,
@@ -560,10 +577,10 @@ impl FieldReceiver {
                 "i64" => r,
                 "u64" => r,
                 _ => panic!("Not supported: {}", joined),
-            }            
-        }    
+            }
+        }
     }
-    
+
     fn encode_flatten_unnested(&self, offset: usize) -> Tokens<Rust> {
         let wip_offset = &rust::import("flatbuffers", "WIPOffset");
         let name = &self.ident.clone().unwrap().to_string();
@@ -572,17 +589,17 @@ impl FieldReceiver {
 
         if joined.starts_with("Option") {
             quote!()
-        }else if joined.starts_with("Vec") {
+        } else if joined.starts_with("Vec") {
             let r = quote! {
                 let vec_$offset = builder.create_vector(&self.$name.as_slice());
             };
             match joined.as_str() {
                 "VecString" => quote! {
-                    let strs_vec_$offset = self.$name.iter()
-                    .map(|s|builder.create_string(s.as_str()))
-                    .collect::<Vec<$wip_offset<&str>>>();
-                    let vec_$offset = builder.create_vector(strs_vec_$offset.as_slice());
-                  },
+                  let strs_vec_$offset = self.$name.iter()
+                  .map(|s|builder.create_string(s.as_str()))
+                  .collect::<Vec<$wip_offset<&str>>>();
+                  let vec_$offset = builder.create_vector(strs_vec_$offset.as_slice());
+                },
                 "Vecchar" => quote! {
                     let vec_conversion_$offset: Vec<u32> = self.$name.iter().map(|s|u32::from(*s)).collect();
                     let vec_$offset = builder.create_vector(&vec_conversion_$offset.as_slice());
@@ -600,13 +617,12 @@ impl FieldReceiver {
                 "Vecu64" => r,
                 _ => panic!("Not supported: {}", joined),
             }
-        }else {
-            let r = quote!();            
+        } else {
+            let r = quote!();
             match joined.as_str() {
-                "String" => 
-                    quote! {
-                        let str_$offset = builder.create_string(self.$name.as_str());
-                    },
+                "String" => quote! {
+                    let str_$offset = builder.create_string(self.$name.as_str());
+                },
                 "char" => r,
                 "bool" => r,
                 "f32" => r,
@@ -621,7 +637,7 @@ impl FieldReceiver {
                 "u64" => r,
                 _ => panic!("Not supported: {}", joined),
             }
-        }         
+        }
     }
 }
 
@@ -654,12 +670,14 @@ mod tests {
                     t_float: f32,
                 }
             "#,
-        ).unwrap();
+        )
+        .unwrap();
         let receiver = InputReceiver::from_derive_input(&input).unwrap();
         assert!(receiver.data.is_struct());
 
         // TODO Box or Rc instances, and define a `fn get_fields(&self) -> Vec<Rc<clone>>`
-        let fields = receiver.data
+        let fields = receiver
+            .data
             .as_ref()
             .take_struct()
             .expect("Enums are not supported (yet)")
