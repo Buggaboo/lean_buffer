@@ -1,6 +1,6 @@
 use std::{env, fs, path::PathBuf};
 
-use lean_buffer_internal::{util::glob_and_merge_generated_files, core::generate_pretty_plain_text};
+use lean_buffer_internal::util::{glob_and_merge_generated_files, generate_pretty_plain_text};
 
 /// required to activate OUT_DIR in the macro, albeit an empty build.rs
 fn main() {

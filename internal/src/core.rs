@@ -11,7 +11,7 @@ use genco::{
 
 use genco::fmt;
 
-use crate::path_visitor;
+use crate::{path_visitor, util::generate_pretty_plain_text};
 
 pub fn tokens_to_string(tokens: &Tokens<Rust>) -> Vec<u8> {
     let mut w = fmt::IoWriter::new(Vec::<u8>::new());
@@ -40,19 +40,6 @@ pub fn generate_pretty_plain_text_from_tokens(tokens: &mut rust::Tokens) -> Stri
     };
 
     generate_pretty_plain_text(utf)
-}
-
-pub fn generate_pretty_plain_text(utf: &str) -> String {
-    let syntax_tree = match syn::parse_file(utf) {
-        Ok(parsed) => parsed,
-        Err(error) => panic!(
-            "There is a problem with parsing the generated rust code: {}",
-            error
-        ),
-    };
-
-    // it seems that genco's code formatting is broken on stable
-    prettyplease::unparse(&syntax_tree)
 }
 
 #[derive(Debug, FromDeriveInput)]

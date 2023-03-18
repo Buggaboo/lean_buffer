@@ -103,3 +103,16 @@ pub fn merge_files(file_paths: &Vec<PathBuf>) -> String {
 
     out
 }
+
+pub fn generate_pretty_plain_text(utf: &str) -> String {
+    let syntax_tree = match syn::parse_file(utf) {
+        Ok(parsed) => parsed,
+        Err(error) => panic!(
+            "There is a problem with parsing the generated rust code: {}",
+            error
+        ),
+    };
+
+    // it seems that genco's code formatting is broken on stable
+    prettyplease::unparse(&syntax_tree)
+}
