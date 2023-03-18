@@ -38,12 +38,12 @@ impl InputReceiver {
         &mut self,
         factory_module: Option<String>,
         factory_name: Option<String>,
-        as_alias: Option<String>,
+        as_module_alias: Option<String>,
     ) {
         if let Some(out_dir) = env::var_os("OUT_DIR") {
             let dest_path =
                 Path::new(&out_dir).join(format!("{}_lb_gen.rs", self.ident.to_string().clone()));
-            let code = self.generate_code(factory_module, factory_name, as_alias);
+            let code = self.generate_code(factory_module, factory_name, as_module_alias);
             if let Err(error) = fs::write(&dest_path, code.as_str()) {
                 panic!(
                     "There is a problem writing the generated rust code: {:?}",
@@ -59,7 +59,7 @@ impl InputReceiver {
         &self,
         factory_module: Option<String>,
         factory_name: Option<String>,
-        as_alias: Option<String>,
+        as_module_alias: Option<String>,
     ) -> String {
         let tokens = &mut rust::Tokens::new();
 
@@ -69,7 +69,7 @@ impl InputReceiver {
                     .unwrap_or("lean_buffer::traits".to_string())
                     .as_str(),
                 factory_name.unwrap_or("Factory".to_string()).as_str(),
-                as_alias.unwrap_or("f".to_string()).as_str(),
+                as_module_alias.unwrap_or("f".to_string()).as_str(),
             ),
         );
         tokens.append(self.generate_table_adapter());
@@ -100,7 +100,7 @@ impl InputReceiver {
         &self,
         factory_module: &str,
         factory_name: &str,
-        as_alias: &str,
+        as_module_alias: &str,
     ) -> Tokens<Rust> {
         let fields = self
             .data
@@ -110,7 +110,7 @@ impl InputReceiver {
             .fields;
 
         let fb_table = &rust::import("flatbuffers", "Table");
-        let factory = &rust::import(factory_module, factory_name).with_alias(as_alias);
+        let factory = &rust::import(factory_module, factory_name).with_module_alias(as_module_alias);
         let factory_ext = &rust::import("lean_buffer::traits", "FactoryExt");
         let entity = &rust::import("self", &self.ident.to_string());
 
