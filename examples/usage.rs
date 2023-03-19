@@ -5,11 +5,12 @@ use lean_buffer::{
     macros::LeanBufferWrite,
     traits::{AdapterExt, Factory, FactoryExt},
 };
+use lean_buffer_macros::LeanBufferRaw;
 
 // Don't panic when you see this false positive warning:
 // proc macro `LeanBufferWrite` not expanded: proc macro not found in the built dylib
 // Just check if the generated file can be located.
-#[derive(LeanBufferWrite)]
+#[derive(LeanBufferWrite, LeanBufferRaw)]
 struct Entity {
     t_u64: u64,
     t_i64: i64,

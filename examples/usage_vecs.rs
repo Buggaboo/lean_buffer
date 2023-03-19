@@ -9,7 +9,7 @@ use lean_buffer::{
 // Don't panic when you see this false positive warning:
 // proc macro `LeanBufferWrite` not expanded: proc macro not found in the built dylib
 // Just check if the generated file can be located.
-#[derive(LeanBufferWrite)]
+#[derive(LeanBufferWrite, LeanBufferRaw)]
 struct EntityVecs {
     t_vec_u64: Vec<u64>,
     t_vec_i64: Vec<i64>,

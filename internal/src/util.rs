@@ -108,7 +108,7 @@ pub fn generate_pretty_plain_text(utf: &str) -> String {
     let syntax_tree = match syn::parse_file(utf) {
         Ok(parsed) => parsed,
         Err(error) => panic!(
-            "There is a problem with parsing the generated rust code: {}",
+            "There is a problem with parsing the generated rust code (lb): {}",
             error
         ),
     };
