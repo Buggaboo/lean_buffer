@@ -7,6 +7,12 @@ pub trait AdapterExt {
     fn flatten(&self, builder: &mut FlatBufferBuilder);
 }
 
+
+/// A different factory can be targeted by creating
+/// a new macro based on the internal package's
+/// LeanBufferInternal, hypothetically,
+/// this package can be used to merge the generated code
+/// with the generated flatbuffers bindings
 pub struct Factory<T> {
     pub phantom_data: PhantomData<T>,
 }
