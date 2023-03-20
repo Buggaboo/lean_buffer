@@ -3,13 +3,14 @@ use std::rc::Rc;
 use flatbuffers::FlatBufferBuilder;
 use lean_buffer::{
     macros::LeanBufferWrite,
+    macros::LeanBufferRaw,
     traits::{AdapterExt, Factory, FactoryExt},
 };
 
 // Don't panic when you see this false positive warning:
 // proc macro `LeanBufferWrite` not expanded: proc macro not found in the built dylib
 // Just check if the generated file can be located.
-#[derive(LeanBufferWrite, LeanBufferRaw)]
+#[derive(LeanBufferWrite)]
 struct EntityMixed {
     t_u64: u64,
     t_i64: i64,

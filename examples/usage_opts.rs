@@ -3,13 +3,14 @@ use std::rc::Rc;
 use flatbuffers::FlatBufferBuilder;
 use lean_buffer::{
     macros::LeanBufferWrite,
+    macros::LeanBufferRaw,
     traits::{AdapterExt, Factory, FactoryExt},
 };
 
 // Don't panic when you see this false positive warning:
 // proc macro `LeanBufferWrite` not expanded: proc macro not found in the built dylib
 // Just check if the generated file can be located.
-#[derive(LeanBufferWrite, LeanBufferRaw)]
+#[derive(LeanBufferWrite)]
 struct EntityOptions {
     t_opt_u64: Option<u64>,
     t_opt_i64: Option<i64>,
@@ -24,6 +25,11 @@ struct EntityOptions {
     t_opt_string: Option<String>,
     t_opt_double: Option<f64>,
     t_opt_float: Option<f32>,
+}
+
+#[derive(LeanBufferRaw)]
+struct EntityOptionsRaw {
+    t_opt_u64: Option<u64>,
 }
 
 // Either copy this file from your project, or use the name convention

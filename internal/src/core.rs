@@ -13,7 +13,7 @@ use genco::fmt;
 
 use crate::{path_visitor, util::generate_pretty_plain_text};
 
-pub fn tokens_to_string(tokens: &Tokens<Rust>) -> Vec<u8> {
+pub fn tokens_to_bytes(tokens: &Tokens<Rust>) -> Vec<u8> {
     let mut w = fmt::IoWriter::new(Vec::<u8>::new());
 
     let fmt = fmt::Config::from_lang::<Rust>().with_indentation(fmt::Indentation::Space(4));
@@ -28,18 +28,21 @@ pub fn tokens_to_string(tokens: &Tokens<Rust>) -> Vec<u8> {
     w.into_inner()
 }
 
-pub fn generate_pretty_plain_text_from_tokens(tokens: &mut rust::Tokens) -> String {
-    let vector = tokens_to_string(tokens);
+pub fn tokens_to_string(tokens: &rust::Tokens) -> String {
+    let vector = tokens_to_bytes(tokens);
 
-    let utf = match std::str::from_utf8(vector.as_slice()) {
-        Ok(utf) => utf,
+    match std::str::from_utf8(vector.as_slice()) {
+        Ok(utf) => utf.to_string(),
         Err(error) => panic!(
             "There is a problem with converting bytes to utf8: {}",
             error
         ),
-    };
+    }
+}
 
-    generate_pretty_plain_text(utf)
+pub fn tokens_to_pretty_string(tokens: &rust::Tokens) -> String {
+    let utf = tokens_to_string(tokens);
+    generate_pretty_plain_text(utf.as_str())
 }
 
 #[derive(Debug, FromDeriveInput)]
@@ -51,52 +54,38 @@ pub struct InputReceiver {
 }
 
 impl InputReceiver {
-    pub fn write(
+    // monomorph
+    fn write<F: Fn(&mut rust::Tokens) -> String>(
         &mut self,
         dest_path: &PathBuf,
         factory_module: Option<String>,
         factory_name: Option<String>,
-        as_module_alias: Option<String>,
+        as_alias: Option<String>,
+        post_process: F,
     ) {
         let tokens = &mut rust::Tokens::new();
-        self.generate_tokens(tokens, factory_module, factory_name, as_module_alias);
-        let code = generate_pretty_plain_text_from_tokens(tokens);
-        if let Err(error) = fs::write(&dest_path, code.as_str()) {
+        self.generate_tokens(tokens, factory_module, factory_name, as_alias);
+        let code = post_process(tokens);
+        if let Err(error) = fs::write(&dest_path, code) {
             panic!(
                 "There is a problem writing the generated rust code: {:?}",
                 error
             );
         }
-    }
-    
-    /// Not prettified
-    pub fn write_raw(
-        &mut self,
-        dest_path: &PathBuf,
-        factory_module: Option<String>,
-        factory_name: Option<String>,
-        as_module_alias: Option<String>,
-    ) {
-        let tokens = &mut rust::Tokens::new();
-        self.generate_tokens(tokens, factory_module, factory_name, as_module_alias);
-        if let Err(error) = fs::write(&dest_path, tokens.to_string().expect("Could not convert tokens to String").as_str()) {
-            panic!(
-                "There is a problem writing the generated rust code: {:?}",
-                error
-            );
-        }
+        ()
     }
 
     pub fn write_raw_to_out_dir(
         &mut self,
         factory_module: Option<String>,
         factory_name: Option<String>,
-        as_module_alias: Option<String>,
+        as_alias: Option<String>,
     ) {
         if let Some(out_dir) = env::var_os("OUT_DIR") {
             let dest_path =
                 Path::new(&out_dir).join(format!("{}_lb_raw_gen.rs", self.ident.to_string().clone()));
-            self.write_raw(&dest_path, factory_module, factory_name, as_module_alias);
+            // self.write_raw(&dest_path, factory_module, factory_name, as_alias);
+            self.write(&dest_path, factory_module, factory_name, as_alias, |t|tokens_to_string(t));
         } else {
             panic!("Missing OUT_DIR environment variable, add a `build.rs` with at least an empty `fn main` to the root of your project");
         }
@@ -106,12 +95,12 @@ impl InputReceiver {
         &mut self,
         factory_module: Option<String>,
         factory_name: Option<String>,
-        as_module_alias: Option<String>,
+        as_alias: Option<String>,
     ) {
         if let Some(out_dir) = env::var_os("OUT_DIR") {
             let dest_path =
                 Path::new(&out_dir).join(format!("{}_lb_gen.rs", self.ident.to_string().clone()));
-            self.write(&dest_path, factory_module, factory_name, as_module_alias);
+            self.write(&dest_path, factory_module, factory_name, as_alias, |t|tokens_to_pretty_string(t));
         } else {
             panic!("Missing OUT_DIR environment variable, add a `build.rs` with at least an empty `fn main` to the root of your project");
         }
@@ -122,7 +111,7 @@ impl InputReceiver {
         tokens: &mut rust::Tokens,
         factory_module: Option<String>,
         factory_name: Option<String>,
-        as_module_alias: Option<String>,
+        as_alias: Option<String>,
     ) {
         tokens.append(
             self.generate_factory(
@@ -130,7 +119,7 @@ impl InputReceiver {
                     .unwrap_or("lean_buffer::traits".to_string())
                     .as_str(),
                 factory_name.unwrap_or("Factory".to_string()).as_str(),
-                as_module_alias.unwrap_or("f".to_string()).as_str(),
+                as_alias,
             ),
         );
         tokens.append(self.generate_table_adapter());
@@ -140,7 +129,7 @@ impl InputReceiver {
         &self,
         factory_module: &str,
         factory_name: &str,
-        as_module_alias: &str,
+        as_alias: Option<String>,
     ) -> Tokens<Rust> {
         let fields = self
             .data
@@ -149,9 +138,13 @@ impl InputReceiver {
             .expect("Enums are not supported (yet)")
             .fields;
 
-        let fb_table = &rust::import("flatbuffers", "Table");
-        let factory =
-            &rust::import(factory_module, factory_name).with_module_alias(as_module_alias);
+        let fb_table = &rust::import("flatbuffers::table", "Table");
+
+        let mut factory = rust::import(factory_module, factory_name);
+        if as_alias.is_some() {
+            factory = factory.with_module_alias(as_alias.unwrap());
+        }
+
         let factory_ext = &rust::import("lean_buffer::traits", "FactoryExt");
         let entity = &rust::import("self", &self.ident.to_string());
 
@@ -187,7 +180,7 @@ impl InputReceiver {
     fn generate_table_adapter(&self) -> Tokens<Rust> {
         let entity = &rust::import("self", &self.ident.to_string());
         let bridge_trait = &rust::import("lean_buffer::traits", "AdapterExt");
-        let flatbuffer_builder = &rust::import("flatbuffers", "FlatBufferBuilder");
+        let flatbuffer_builder = &rust::import("flatbuffers::builder", "FlatBufferBuilder");
 
         // TODO Box or Rc instances, and define a `fn get_fields(&self) -> Vec<Rc<clone>>`
         let fields = self
@@ -214,7 +207,7 @@ impl InputReceiver {
 
         quote! {
           impl $bridge_trait for $entity {
-            fn flatten(&self, builder: &mut $flatbuffer_builder) {
+            fn flatten(&self, builder: &mut $flatbuffer_builder<'_>) {
               builder.reset();
               $unnested_props
               let wip_offset_unfinished = builder.start_table();

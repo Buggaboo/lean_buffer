@@ -3,9 +3,9 @@ use std::rc::Rc;
 use flatbuffers::FlatBufferBuilder;
 use lean_buffer::{
     macros::LeanBufferWrite,
+    macros::LeanBufferRaw,
     traits::{AdapterExt, Factory, FactoryExt},
 };
-use lean_buffer_macros::LeanBufferRaw;
 
 // Don't panic when you see this false positive warning:
 // proc macro `LeanBufferWrite` not expanded: proc macro not found in the built dylib
