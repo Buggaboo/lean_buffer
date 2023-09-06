@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 lean-buffer-internal = { path = "internal" }
 lean-buffer-macros = { path = "macros" }
-flatbuffers = "22.10.26"
+flatbuffers = "23.5.26"
 
 [build-dependencies]
 lean-buffer-internal = { path = "internal" }
