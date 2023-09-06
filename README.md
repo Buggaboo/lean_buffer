@@ -88,5 +88,6 @@ in your crate project.
 ...
 
 ## TODO
+* IDEA: Replace custom trait with Copy trait, so its flat buffer bytes can be copied
 * [lean-buffer-internal](internal/src/util.rs) begs to be put in its own project, with its non-regexp, tokenization, file merging features. Working name: rs-ast-bundler?
-* Find answer: Is it optimal to pack in this order 64 bit, Vectors, then 32 bit, 16 bit etc.? Is the current implementation good enough?
+* Benchmark: Is it optimal to pack in this order 64 bit, Vectors, then 32 bit, 16 bit etc.? Is the current implementation good enough?
