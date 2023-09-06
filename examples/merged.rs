@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use flatbuffers::FlatBufferBuilder;
 use lean_buffer::traits::{AdapterExt, Factory, FactoryExt};
 
@@ -104,7 +102,7 @@ fn main() {
     let factory = Factory::<Entity> {
         phantom_data: std::marker::PhantomData,
     };
-    let f = Rc::new(factory) as Rc<dyn FactoryExt<Entity>>;
+    let f = Box::new(factory) as Box<dyn FactoryExt<Entity>>;
     let mut e1 = f.new_object();
 
     e1.t_i64 = 0x1337833F;
