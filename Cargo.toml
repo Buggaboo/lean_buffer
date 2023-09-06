@@ -1,6 +1,6 @@
 [package]
 name = "lean-buffer"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [dependencies]
@@ -12,5 +12,5 @@ flatbuffers = "22.10.26"
 lean-buffer-internal = { path = "internal" }
 
 [dev-dependencies]
-syn = "1.0" # syn = { version = "1.0.107", default-features = false, features = ["full"] }
-darling = "0.14.3"
+syn = { version = "2.0.31", default-features = false, features = ["full"] }
+darling = "0.20.3"

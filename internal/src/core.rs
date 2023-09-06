@@ -138,7 +138,7 @@ impl InputReceiver {
             .expect("Enums are not supported (yet)")
             .fields;
 
-        let fb_table = &rust::import("flatbuffers::table", "Table");
+        let fb_table = &rust::import("flatbuffers", "Table");
 
         let mut factory = rust::import(factory_module, factory_name);
         if as_alias.is_some() {
@@ -180,7 +180,7 @@ impl InputReceiver {
     fn generate_table_adapter(&self) -> Tokens<Rust> {
         let entity = &rust::import("self", &self.ident.to_string());
         let bridge_trait = &rust::import("lean_buffer::traits", "AdapterExt");
-        let flatbuffer_builder = &rust::import("flatbuffers::builder", "FlatBufferBuilder");
+        let flatbuffer_builder = &rust::import("flatbuffers", "FlatBufferBuilder");
 
         // TODO Box or Rc instances, and define a `fn get_fields(&self) -> Vec<Rc<clone>>`
         let fields = self

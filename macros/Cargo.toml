@@ -9,5 +9,5 @@ proc-macro = true
 [dependencies]
 lean-buffer-internal = { path = "../internal" }
 proc-macro2 = { version = "1.0", default-features = false }
-syn = "1.0" # syn = { version = "1.0.107", default-features = false, features = ["full"] }
-darling = "0.14.3"
+syn = { version = "2.0.31", default-features = false, features = ["full"] }
+darling = "0.20.3"
